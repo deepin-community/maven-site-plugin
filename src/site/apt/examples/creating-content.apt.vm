@@ -57,6 +57,9 @@ Creating Content
       +- xhtml/
       |  +- xhtml-too.xhtml
       |
+      +- xhtml5/
+      |  +- xhtml5-content.xhtml5
+      |
       +- site.xml
 --------------------
 
@@ -95,7 +98,7 @@ Creating Content
   {{{/doxia/references/index.html}Doxia Markup Languages}}),
   but in this case you need to add the corresponding Doxia dependency to your site plugin configuration, as
   explained in the last paragraph.
-  Note that Doxia also supports several output formats, the site plugin only creates XHTML.
+  Note that Doxia also supports several output formats, the site plugin only creates XHTML5.
 
   Note that all of the above is optional - just one index file is required in
   one of the input trees. The paths under each format will be merged together
@@ -113,6 +116,8 @@ Creating Content
       +- general.html
       +- faq.html
       +- other.html
+      +- xhtml-too.html
+      +- xhtml5-content.html
 --------------------
 
   This means that <<</src/site/apt/index.apt>>> will be available in the site as
@@ -144,7 +149,7 @@ Creating Content
             +- pic1.jpg
 --------------------
 
-  The file <<<site.css>>> will be added to the default XHTML output, so it can
+  The file <<<site.css>>> will be added to the default XHTML5 output, so it can
   be used to adjust the default Maven stylesheets if desired.
 
   The file <<<pic1.jpg>>> will be available via a relative reference to the
@@ -152,9 +157,6 @@ Creating Content
 
 
 * Filtering
-
-  <<Note:>> This feature is available in version 2.0-beta-6 or later of the
-  Site Plugin.
 
   To filter properties into any supported documentation format, add a <<<.vm>>>
   extension to the filename.
@@ -165,15 +167,35 @@ Creating Content
   property set in the
   {{{http://svn.apache.org/repos/asf/maven/site/trunk/pom.xml}POM}}.
 
-  <<Note:>> {{{http://velocity.apache.org/}Apache Velocity}} is used to apply the
-  filtering. Because Velocity uses a dot-notation to traverse beans you <<cannot>>
-  use dotted properties defined in <<<\<properties\>>>> directly. It is generally
-  advised to access properties by using the <<<${esc.d}context>>> tool.
-  E.g., with <<<${esc.d}context.get("my.property")>>>.
+  <<Note:>> {{{http://velocity.apache.org/}Apache Velocity}} is used to apply the filtering.
 
   Some properties are defined by default: see
   {{{/doxia/doxia-sitetools/doxia-site-renderer/#Velocity_processing} Doxia Site Renderer's Velocity processing reference}}
   for more information. For a complete usage overview, see Velocity's {{{http://velocity.apache.org/engine/devel/user-guide.html}user guide}}.
+
+  Since version 3.5, you can save processed markup by setting <<<saveProcessedContent>>> to <<<true>>>: see
+  {{{../site-mojo.html#saveProcessedContent}corresponding documentation}} for more details.
+
+** Common Issues and Workarounds
+
+  * <<dotted properties>>:
+
+  As Velocity uses a dot-notation to traverse beans, you <<cannot>>
+  use dotted properties defined in <<<\<properties\>>>> directly.
+
+  It is generally advised to access properties by using the <<<${esc.d}context>>> tool:
+  e.g., with <<<${esc.d}context.get("my.property")>>>.
+
+  * <<Markdown conflict with Velocity on ${esc.h}${esc.h} syntax>>:
+
+  Since <<<${esc.h}${esc.h}>>> denotes a
+  {{{http://velocity.apache.org/engine/1.7/vtl-reference.html#single-line-comments}single line comment}} in Velocity,
+  Markdown headers using this syntax are suppressed from generated content.
+
+  You can use {{{http://velocity.apache.org/engine/1.7/vtl-reference.html#unparsed-content}unparsed content syntax}}
+  <<<${esc.h}[[#[[##]]#]]${esc.h}>>> or
+  {{{http://velocity.apache.org/tools/2.0/apidocs/org/apache/velocity/tools/generic/EscapeTool.html}escape tool}}
+  like <<<${esc.d}\{esc.h\}${esc.d}\{esc.h\}>>>.
 
 * Internationalization
 
@@ -185,7 +207,7 @@ Creating Content
   To enable multiple locales, or languages, add a configuration similar to the
   following to your POM:
 
--------------------
++------------------
 <project>
   ...
   <build>
@@ -202,7 +224,7 @@ Creating Content
   </build>
   ...
 </project>
--------------------
++------------------
 
   This will generate both an English and a French version of the site. If
   <<<en>>> is your current locale, then it will be generated at the root of the

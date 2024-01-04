@@ -40,7 +40,11 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.reporting.MavenReport;
+import org.apache.maven.reporting.MavenReportException;
 import org.apache.maven.reporting.exec.MavenReportExecution;
+import org.apache.maven.shared.utils.logging.MessageBuilder;
+
+import static org.apache.maven.shared.utils.logging.MessageUtils.buffer;
 
 /**
  * Generates the site for a single project.
@@ -51,14 +55,14 @@ import org.apache.maven.reporting.exec.MavenReportExecution;
  *
  * @author <a href="mailto:evenisse@apache.org">Emmanuel Venisse</a>
  * @author <a href="mailto:vincent.siveton@gmail.com">Vincent Siveton</a>
- * @version $Id: SiteMojo.java 1754182 2016-07-26 21:35:00Z hboutemy $
+ *
  */
 @Mojo( name = "site", requiresDependencyResolution = ResolutionScope.TEST, requiresReports = true )
 public class SiteMojo
     extends AbstractSiteRenderingMojo
 {
     /**
-     * Directory where the project sites and report distributions will be generated.
+     * Directory where the project sites and report distributions will be generated (as html/css/...).
      */
     @Parameter( property = "siteOutputDirectory", defaultValue = "${project.reporting.outputDirectory}" )
     protected File outputDirectory;
@@ -87,11 +91,7 @@ public class SiteMojo
     private boolean validate;
 
     /**
-     * {@inheritDoc} Generate the project site
-     * <p/>
-     * throws MojoExecutionException if any
-     *
-     * @see org.apache.maven.plugin.Mojo#execute()
+     * {@inheritDoc}
      */
     public void execute()
         throws MojoExecutionException, MojoFailureException
@@ -129,11 +129,27 @@ public class SiteMojo
 
             for ( Locale locale : localesList )
             {
+                if ( locale == defaultLocale )
+                {
+                    getLog().info( buffer().strong( "Rendering site with default locale " + locale.getDisplayName()
+                        + " (" + locale + ")" ).toString() );
+                }
+                else
+                {
+                    getLog().info( "" );
+                    getLog().info( buffer().strong( "Rendering localized site for " + locale.getDisplayName() + " ("
+                        + locale + ")" ).toString() );
+                }
                 renderLocale( locale, reports );
             }
         }
         catch ( RendererException e )
         {
+            if ( e.getCause() instanceof MavenReportException )
+            {
+                // issue caused by report, not really by Doxia Site Renderer
+                throw new MojoExecutionException( e.getMessage(), e.getCause() );
+            }
             throw new MojoExecutionException( e.getMessage(), e );
         }
         catch ( IOException e )
@@ -189,7 +205,8 @@ public class SiteMojo
         context.getSiteDirectories().clear();
         context.addSiteDirectory( generatedSiteDirectory );
 
-        Map<String, DocumentRenderer> generatedDocuments = siteRenderer.locateDocumentFiles( context );
+        Map<String, DocumentRenderer> generatedDocuments =
+            siteRenderer.locateDocumentFiles( context, false /* not editable */ );
 
         renderDoxiaDocuments( generatedDocuments, context, outputDir, true );
 
@@ -208,10 +225,10 @@ public class SiteMojo
                                                          boolean generated )
                                                              throws RendererException, IOException
     {
-        Map<String, DocumentRenderer> doxiaDocuments = new TreeMap<String, DocumentRenderer>();
-        List<DocumentRenderer> nonDoxiaDocuments = new ArrayList<DocumentRenderer>();
+        Map<String, DocumentRenderer> doxiaDocuments = new TreeMap<>();
+        List<DocumentRenderer> nonDoxiaDocuments = new ArrayList<>();
 
-        Map<String, Integer> counts = new TreeMap<String, Integer>();
+        Map<String, Integer> counts = new TreeMap<>();
 
         for ( Map.Entry<String, DocumentRenderer> entry : documents.entrySet() )
         {
@@ -244,20 +261,27 @@ public class SiteMojo
 
         if ( doxiaDocuments.size() > 0 )
         {
-            StringBuilder sb = new StringBuilder( 15 * counts.size() );
+            MessageBuilder mb = buffer();
+            mb.a( "Rendering " );
+            mb.strong( doxiaDocuments.size() + ( generated ? " generated" : "" ) + " Doxia document"
+                + ( doxiaDocuments.size() > 1 ? "s" : "" ) );
+            mb.a( ": " );
+
+            boolean first = true;
             for ( Map.Entry<String, Integer> entry : counts.entrySet() )
             {
-                if ( sb.length() > 0 )
+                if ( first )
                 {
-                    sb.append( ", " );
+                    first = false;
                 }
-                sb.append( entry.getValue() );
-                sb.append( ' ' );
-                sb.append( entry.getKey() );
+                else
+                {
+                    mb.a( ", " );
+                }
+                mb.strong( entry.getValue() + " " + entry.getKey() );
             }
 
-            getLog().info( "Rendering " + doxiaDocuments.size() + ( generated ? " generated" : "" ) + " Doxia document"
-                + ( doxiaDocuments.size() > 1 ? "s" : "" ) + ": " + sb.toString() );
+            getLog().info( mb.toString() );
 
             siteRenderer.render( doxiaDocuments.values(), context, outputDir );
         }

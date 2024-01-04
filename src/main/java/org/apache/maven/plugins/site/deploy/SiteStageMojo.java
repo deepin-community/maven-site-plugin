@@ -40,7 +40,7 @@ import org.apache.maven.project.MavenProject;
  * such as by calling <code>mvn site</code>.</p>
  *
  * @author <a href="mailto:vincent.siveton@gmail.com">Vincent Siveton</a>
- * @version $Id: SiteStageMojo.java 1738477 2016-04-10 22:35:08Z hboutemy $
+ *
  * @since 2.0
  */
 @Mojo( name = "stage", requiresDependencyResolution = ResolutionScope.TEST )
@@ -164,6 +164,7 @@ public class SiteStageMojo
             return null;
         }
 
+        // todo Lambda Java 1.8
         for ( MavenProject reactorProject : reactorProjects )
         {
             if ( reactorProject.isExecutionRoot() )
@@ -171,7 +172,6 @@ public class SiteStageMojo
                 return reactorProject;
             }
         }
-
         return null;
     }
 }

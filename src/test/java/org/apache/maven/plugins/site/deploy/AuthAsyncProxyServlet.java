@@ -21,10 +21,7 @@ package org.apache.maven.plugins.site.deploy;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
@@ -34,16 +31,15 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.maven.plugins.site.deploy.SimpleDavServerHandler.HttpRequest;
-import org.mortbay.jetty.security.B64Code;
-import org.mortbay.proxy.AsyncProxyServlet;
+import org.eclipse.jetty.util.B64Code;
+import org.eclipse.jetty.proxy.AsyncProxyServlet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.maven.plugins.site.deploy.HttpRequest;
+
 
 /**
  * @author Olivier Lamy
- * @since 
- * @version $Id: AuthAsyncProxyServlet.java 1604549 2014-06-22 08:33:33Z hboutemy $
  */
 public class AuthAsyncProxyServlet
     extends AsyncProxyServlet
@@ -108,7 +104,7 @@ public class AuthAsyncProxyServlet
             if ( proxyAuthorization != null && proxyAuthorization.startsWith( "Basic " ) )
             {
                 String proxyAuth = proxyAuthorization.substring( 6 );
-                String authorization = B64Code.decode( proxyAuth );
+                String authorization = new String(B64Code.decode( proxyAuth ));
                 String[] authTokens = authorization.split( ":" );
                 String user = authTokens[0];
                 String password = authTokens[1];
@@ -154,8 +150,6 @@ public class AuthAsyncProxyServlet
                         log.info( "writing file " + targetFile.getPath() );
                         FileUtils.writeByteArrayToFile( targetFile, IOUtils.toByteArray( request.getInputStream() ) );
                     }
-
-                    //PrintWriter writer = response.getWriter();
 
                     response.setStatus( HttpServletResponse.SC_OK );
                     return;

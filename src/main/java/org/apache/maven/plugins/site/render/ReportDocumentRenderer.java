@@ -46,7 +46,7 @@ import org.apache.maven.reporting.MavenMultiPageReport;
 import org.apache.maven.reporting.MavenReport;
 import org.apache.maven.reporting.MavenReportException;
 import org.apache.maven.reporting.exec.MavenReportExecution;
-import org.codehaus.plexus.util.IOUtil;
+import org.codehaus.plexus.util.PathTool;
 import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.WriterFactory;
 
@@ -54,6 +54,7 @@ import org.codehaus.plexus.util.WriterFactory;
  * Renders a Maven report in a Doxia site.
  *
  * @author <a href="mailto:brett@apache.org">Brett Porter</a>
+ * @see org.apache.maven.doxia.siterenderer.DoxiaDocumentRenderer
  */
 public class ReportDocumentRenderer
     implements DocumentRenderer
@@ -65,7 +66,7 @@ public class ReportDocumentRenderer
     private final String reportMojoInfo;
 
     private final ClassLoader classLoader;
-    
+
     private final Log log;
 
     public ReportDocumentRenderer( MavenReportExecution mavenReportExecution, RenderingContext renderingContext,
@@ -75,55 +76,14 @@ public class ReportDocumentRenderer
 
         this.renderingContext = renderingContext;
 
-        if ( mavenReportExecution.getPlugin() == null )
-        {
-            // Maven 2: report has been prepared in Maven Core, MavenReportExecution contains only the report
-            this.reportMojoInfo = getPluginInfo( report );
-        }
-        else
-        {
-            // Maven 3: full MavenReportExecution prepared by maven-reporting-impl
-            this.reportMojoInfo =
-                mavenReportExecution.getPlugin().getArtifactId() + ':' + mavenReportExecution.getPlugin().getVersion()
-                    + ':' + mavenReportExecution.getGoal();
-        }
+        // full MavenReportExecution prepared by maven-reporting-impl
+        this.reportMojoInfo =
+            mavenReportExecution.getPlugin().getArtifactId() + ':' + mavenReportExecution.getPlugin().getVersion()
+                + ':' + mavenReportExecution.getGoal();
 
         this.classLoader = mavenReportExecution.getClassLoader();
 
         this.log = log;
-    }
-
-    /**
-     * Get plugin information from report's Manifest.
-     * 
-     * @param report the Maven report
-     * @return plugin information as Specification Title followed by Specification Version if set in Manifest and
-     *         supported by JVM
-     */
-    private String getPluginInfo( MavenReport report )
-    {
-        Package pkg = report.getClass().getPackage();
-
-        if ( pkg != null )
-        {
-            String title = pkg.getSpecificationTitle();
-            String version = pkg.getSpecificationVersion();
-            
-            if ( title == null )
-            {
-                return version;
-            }
-            else if ( version == null )
-            {
-                return title;
-            }
-            else
-            {
-                return title + ' ' + version;
-            }
-        }
-
-        return null;
     }
 
     private static class MultiPageSubSink
@@ -133,9 +93,9 @@ public class ReportDocumentRenderer
 
         private String outputName;
 
-        public MultiPageSubSink( File outputDir, String outputName, RenderingContext ctx )
+        MultiPageSubSink( File outputDir, String outputName, RenderingContext context )
         {
-            super( ctx );
+            super( context );
             this.outputName = outputName;
             this.outputDir = outputDir;
         }
@@ -155,22 +115,56 @@ public class ReportDocumentRenderer
     private static class MultiPageSinkFactory
         implements SinkFactory
     {
+        /**
+         * The report that is (maybe) generating multiple pages
+         */
+        private MavenReport report;
+
+        /**
+         * The main RenderingContext, which is the base for the RenderingContext of subpages
+         */
         private RenderingContext context;
 
+        /**
+         * List of sinks (subpages) associated to this report
+         */
         private List<MultiPageSubSink> sinks = new ArrayList<MultiPageSubSink>();
 
-        public MultiPageSinkFactory( RenderingContext ctx )
+        MultiPageSinkFactory( MavenReport report, RenderingContext context )
         {
-            this.context = ctx;
+            this.report = report;
+            this.context = context;
         }
 
+        @Override
         public Sink createSink( File outputDir, String outputName )
         {
-            MultiPageSubSink sink = new MultiPageSubSink( outputDir, outputName, context );
+            // Create a new context, similar to the main one, but with a different output name
+            String outputRelativeToTargetSite = PathTool.getRelativeFilePath(
+                report.getReportOutputDirectory().getPath(),
+                new File( outputDir, outputName ).getPath()
+            );
+
+            RenderingContext subSinkContext = new RenderingContext(
+                context.getBasedir(),
+                context.getBasedirRelativePath(),
+                outputRelativeToTargetSite,
+                context.getParserId(),
+                context.getExtension(),
+                context.isEditable(),
+                context.getGenerator()
+            );
+
+            // Create a sink for this subpage, based on this new context
+            MultiPageSubSink sink = new MultiPageSubSink( outputDir, outputName, subSinkContext );
+
+            // Add it to the list of sinks associated to this report
             sinks.add( sink );
+
             return sink;
         }
 
+        @Override
         public Sink createSink( File arg0, String arg1, String arg2 )
             throws IOException
         {
@@ -178,6 +172,7 @@ public class ReportDocumentRenderer
             return null;
         }
 
+        @Override
         public Sink createSink( OutputStream arg0 )
             throws IOException
         {
@@ -185,6 +180,7 @@ public class ReportDocumentRenderer
             return null;
         }
 
+        @Override
         public Sink createSink( OutputStream arg0, String arg1 )
             throws IOException
         {
@@ -198,6 +194,7 @@ public class ReportDocumentRenderer
         }
     }
 
+    @Override
     public void renderDocument( Writer writer, Renderer renderer, SiteRenderingContext siteRenderingContext )
         throws RendererException, FileNotFoundException
     {
@@ -213,7 +210,7 @@ public class ReportDocumentRenderer
         // main sink
         SiteRendererSink mainSink = new SiteRendererSink( renderingContext );
         // sink factory, for multi-page reports that need sub-sinks
-        MultiPageSinkFactory multiPageSinkFactory = new MultiPageSinkFactory( renderingContext );
+        MultiPageSinkFactory multiPageSinkFactory = new MultiPageSinkFactory( report, renderingContext );
 
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         try
@@ -240,13 +237,19 @@ public class ReportDocumentRenderer
         }
         catch ( MavenReportException e )
         {
-            String report = ( reportMojoInfo == null ) ? ( '"' + localReportName + "\" report" ) : reportMojoInfo;
-            throw new RendererException( "Error generating " + report + ": " + e.getMessage(), e );
+            String report = ( reportMojoInfo == null ) ? ( '"' + localReportName + '"' ) : reportMojoInfo;
+            throw new RendererException( "Error generating " + report + " report", e );
+        }
+        catch ( RuntimeException re )
+        {
+            // MSITE-836: if report generation throws a RuntimeException, transform to RendererException
+            String report = ( reportMojoInfo == null ) ? ( '"' + localReportName + '"' ) : reportMojoInfo;
+            throw new RendererException( "Error generating " + report + " report", re );
         }
         catch ( LinkageError e )
         {
-            String report = ( reportMojoInfo == null ) ? ( '"' + localReportName + "\" report" ) : reportMojoInfo;
-            log.warn( "An issue has occurred with " + report + ", skipping LinkageError "
+            String report = ( reportMojoInfo == null ) ? ( '"' + localReportName + '"' ) : reportMojoInfo;
+            log.warn( "An issue has occurred with " + report + " report, skipping LinkageError "
                           + e.getMessage() + ", please report an issue to Maven dev team.", e );
         }
         finally
@@ -264,10 +267,11 @@ public class ReportDocumentRenderer
             return;
         }
 
-        // render main sink
-        renderer.generateDocument( writer, mainSink, siteRenderingContext );
+        // render main sink document content
+        renderer.mergeDocumentIntoSite( writer, mainSink, siteRenderingContext );
 
         // render sub-sinks, eventually created by multi-page reports
+        String outputName = "";
         try
         {
             List<MultiPageSubSink> sinks = multiPageSinkFactory.sinks();
@@ -278,24 +282,25 @@ public class ReportDocumentRenderer
             {
                 mySink.enableLogging( new MojoLogWrapper( log ) );
 
-                log.debug( "  Rendering " + mySink.getOutputName() );
+                outputName = mySink.getOutputName();
+                log.debug( "  Rendering " + outputName );
 
-                File outputFile = new File( mySink.getOutputDir(), mySink.getOutputName() );
-
-                Writer out = null;
-                try
+                // Create directories if necessary
+                if ( !mySink.getOutputDir().exists() )
                 {
-                    out = WriterFactory.newWriter( outputFile, siteRenderingContext.getOutputEncoding() );
-                    renderer.generateDocument( out, mySink, siteRenderingContext );
+                    mySink.getOutputDir().mkdirs();
+                }
+
+                File outputFile = new File( mySink.getOutputDir(), outputName );
+
+                try ( Writer out = WriterFactory.newWriter( outputFile, siteRenderingContext.getOutputEncoding() ) )
+                {
+                    renderer.mergeDocumentIntoSite( out, mySink, siteRenderingContext );
                     mySink.close();
                     mySink = null;
-                    out.close();
-                    out = null;
                 }
                 finally
                 {
-                    IOUtil.close( out );
-
                     if ( mySink != null )
                     {
                         mySink.close();
@@ -305,13 +310,13 @@ public class ReportDocumentRenderer
         }
         catch ( IOException e )
         {
-            throw new RendererException( "Cannot create writer", e );
+            throw new RendererException( "Cannot create writer to " + outputName, e );
         }
     }
 
     /**
      * Try to generate report with extended multi-page API.
-     * 
+     *
      * @return <code>true</code> if the report was compatible with the extended API
      */
     private boolean generateMultiPage( Locale locale, SinkFactory sf, Sink sink )
@@ -336,30 +341,25 @@ public class ReportDocumentRenderer
         {
             return false;
         }
-        catch ( IllegalArgumentException iae )
+        catch ( IllegalArgumentException | IllegalAccessException | InvocationTargetException ite )
         {
-            throw new MavenReportException( "error while invoking generate", iae );
-        }
-        catch ( IllegalAccessException iae )
-        {
-            throw new MavenReportException( "error while invoking generate", iae );
-        }
-        catch ( InvocationTargetException ite )
-        {
-            throw new MavenReportException( "error while invoking generate", ite );
+            throw new MavenReportException( "error while invoking generate on " + report.getClass(), ite );
         }
     }
 
+    @Override
     public String getOutputName()
     {
         return renderingContext.getOutputName();
     }
 
+    @Override
     public RenderingContext getRenderingContext()
     {
         return renderingContext;
     }
 
+    @Override
     public boolean isOverwrite()
     {
         // TODO: would be nice to query the report to see if it is modified
@@ -369,8 +369,14 @@ public class ReportDocumentRenderer
     /**
      * @return true if the current report is external, false otherwise
      */
+    @Override
     public boolean isExternalReport()
     {
         return report.isExternalReport();
+    }
+
+    public String getReportMojoInfo()
+    {
+        return reportMojoInfo;
     }
 }

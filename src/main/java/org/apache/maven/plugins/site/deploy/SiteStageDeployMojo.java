@@ -20,7 +20,6 @@ package org.apache.maven.plugins.site.deploy;
  */
 
 import java.util.Map;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.PluginManagement;
@@ -30,6 +29,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.shared.utils.StringUtils;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 /**
@@ -38,7 +38,7 @@ import org.codehaus.plexus.util.xml.Xpp3Dom;
  * POM, using <a href="/wagon/">wagon supported protocols</a>
  *
  * @author <a href="mailto:vincent.siveton@gmail.com">Vincent Siveton</a>
- * @version $Id: SiteStageDeployMojo.java 1729708 2016-02-10 19:51:02Z michaelo $
+ *
  * @since 2.0
  */
 @Mojo( name = "stage-deploy", requiresDependencyResolution = ResolutionScope.TEST )
@@ -96,13 +96,18 @@ public class SiteStageDeployMojo
     {
         if ( StringUtils.isNotEmpty( topSiteURL ) )
         {
+            getLog().debug( "stage-deploy top distributionManagement.site.url configured with topSiteURL parameter: "
+                + topSiteURL );
             return topSiteURL;
         }
 
         if ( StringUtils.isNotEmpty( stagingSiteURL ) )
         {
             // We need to calculate the first project that supplied same stagingSiteURL
-            return getSite( getTopMostParentWithSameStagingSiteURL() ).getUrl();
+            MavenProject topProject = getTopMostParentWithSameStagingSiteURL();
+            String url = getSite( topProject ).getUrl();
+            getLog().debug( "stage-deploy top stagingSiteURL found in " + topProject.getId() + " with value: " + url );
+            return url;
         }
 
         return super.determineTopDistributionManagementSiteUrl();

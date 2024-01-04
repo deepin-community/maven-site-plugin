@@ -37,18 +37,12 @@ Configuring the Site Descriptor
   to be accessible in the generated site, you must configure your site descriptor. You create the site descriptor in
   a file called <<<site.xml>>> which should be located in your <<<src/site>>> directory.
 
-  If you are migrating from Maven 1.x you will be interested to know that the
-  <<<navigation.xml>>> file has been replaced by the site descriptor in Maven 2.
-  The format is nearly the same, so you can probably reuse most of your old file.
-
   There is a
   {{{/doxia/doxia-sitetools/doxia-decoration-model/decoration.html}reference documentation for the site descriptor}}
-  available.
-
-  The XML Schema for the site descriptor is published at {{/xsd/decoration-1.7.0.xsd}}.
+  available with its XML Schema.
 
   Have a look at the
-  {{{http://svn.apache.org/repos/asf/maven/plugins/trunk/maven-site-plugin/src/site/site.xml}site descriptor for Maven Site Plugin}}
+  {{{https://github.com/apache/maven-site-plugin/blob/master/src/site/site.xml}site descriptor for Maven Site Plugin}}
   for a real life example.
 
 %{toc|section=1|fromDepth=2|toDepth=3}
@@ -80,12 +74,12 @@ Configuring the Site Descriptor
   ...
   <bannerLeft>
     <name>Project Name</name>
-    <src>http://maven.apache.org/images/apache-maven-project-2.png</src>
-    <href>http://maven.apache.org/</href>
+    <src>https://maven.apache.org/images/apache-maven-project-2.png</src>
+    <href>https://maven.apache.org/</href>
   </bannerLeft>
 
   <bannerRight>
-    <src>http://maven.apache.org/images/maven-logo-2.gif</src>
+    <src>https://maven.apache.org/images/maven-logo-2.gif</src>
   </bannerRight>
   ...
 </project>
@@ -167,8 +161,8 @@ Configuring the Site Descriptor
 <project>
   ...
   <poweredBy>
-    <logo name="Maven" href="http://maven.apache.org/"
-          img="http://maven.apache.org/images/logos/maven-feather.png"/>
+    <logo name="Maven" href="https://maven.apache.org/"
+          img="https://maven.apache.org/images/logos/maven-feather.png"/>
   </poweredBy>
   ...
 </project>
@@ -181,8 +175,8 @@ Configuring the Site Descriptor
 * Including Generated Content
 
   Files in the format-based directory structure can be linked to by their target
-  HTML filename, e.g. <<<${basedir}/src/site/apt/foo.apt>>> and
-  <<<${basedir}/src/site/fml/faq.fml>>> can be linked to via:
+  HTML filename, e.g. <<<$\{basedir\}/src/site/apt/foo.apt>>> and
+  <<<$\{basedir\}/src/site/fml/faq.fml>>> can be linked to via:
 
 +-----+
 <project>
@@ -243,7 +237,7 @@ Configuring the Site Descriptor
   <body>
     ...
     <head>
-      <![CDATA[<script src="http://www.google-analytics.com/urchin.js" type="text/javascript" />]]>
+      <![CDATA[<script src="http://www.google-analytics.com/urchin.js" type="text/javascript"></script>]]>
     </head>
     ...
   </body>
@@ -266,7 +260,7 @@ Configuring the Site Descriptor
     ...
     <links>
         <item name="Apache" href="http://www.apache.org"/>
-        <item name="Maven" href="http://maven.apache.org"/>
+        <item name="Maven" href="https://maven.apache.org"/>
     </links>
     ...
   </body>
@@ -289,8 +283,8 @@ Configuring the Site Descriptor
   <body>
     ...
     <breadcrumbs>
-      <item name="Doxia" href="http://maven.apache.org/doxia/index.html"/>
-      <item name="Trunk" href="http://maven.apache.org/doxia/doxia/index.html"/>
+      <item name="Doxia" href="https://maven.apache.org/doxia/index.html"/>
+      <item name="Trunk" href="https://maven.apache.org/doxia/doxia/index.html"/>
     </breadcrumbs>
     ...
   </body>
@@ -348,7 +342,7 @@ Configuring the Site Descriptor
   <skin>
     <groupId>org.apache.maven.skins</groupId>
     <artifactId>maven-fluido-skin</artifactId>
-    <version>1.5</version>
+    <version>1.8</version>
   </skin>
   ...
 </project>
@@ -404,4 +398,6 @@ Configuring the Site Descriptor
 
   <<Note:>> Support for some expressions, like <<<$\{project.name\}>>> is present in
   version 2.0-beta-5 of this plugin. Full support is available since version
-  2.0-beta-6.
+  2.0-beta-6. Also, there are additional restrictions on using dotted project properties
+  in content pages. See {{{./creating-content.html#Filtering}Filtering}} for details
+  on injecting properties into content pages.

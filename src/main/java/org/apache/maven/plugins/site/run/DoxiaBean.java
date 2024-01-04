@@ -28,7 +28,7 @@ import org.apache.maven.doxia.siterenderer.SiteRenderingContext;
  * Bean to handle Doxia in a servlet context attribute
  *
  * @author <a href="mailto:vincent.siveton@gmail.com">Vincent Siveton</a>
- * @version $Id: DoxiaBean.java 1720982 2015-12-20 00:38:35Z hboutemy $
+ *
  */
 public class DoxiaBean
 {
@@ -39,9 +39,9 @@ public class DoxiaBean
     private SiteRenderingContext generatedSiteContext;
 
     /**
-     * @param context
-     * @param documents
-     * @param generatedSiteDirectory
+     * @param context context
+     * @param documents documents
+     * @param generatedSiteContext context of generated content
      */
     public DoxiaBean( SiteRenderingContext context, Map<String, DocumentRenderer> documents,
                       SiteRenderingContext generatedSiteContext )

@@ -1,3 +1,22 @@
+maven-site-plugin (3.12.1-2) unstable; urgency=medium
+
+  * Team upload.
+  * Depend on libmaven-parent-java to fix a build failure
+
+ -- Emmanuel Bourg <ebourg@apache.org>  Thu, 12 Jan 2023 10:14:53 +0100
+
+maven-site-plugin (3.12.1-1) unstable; urgency=medium
+
+  * Team upload.
+  * New upstream release
+    - Removed the jetty patch (fixed upstream)
+    - Depend on doxia (>= 1.11)
+    - Updated the maven-debian-helper rules
+  * Standards-Version updated to 4.6.2
+  * Switch to debhelper level 13
+
+ -- Emmanuel Bourg <ebourg@apache.org>  Mon, 09 Jan 2023 11:59:54 +0100
+
 maven-site-plugin (3.6-4) unstable; urgency=medium
 
   * Team upload.

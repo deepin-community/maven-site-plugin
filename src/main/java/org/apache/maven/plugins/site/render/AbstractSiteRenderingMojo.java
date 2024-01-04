@@ -19,17 +19,6 @@ package org.apache.maven.plugins.site.render;
  * under the License.
  */
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.doxia.site.decoration.DecorationModel;
 import org.apache.maven.doxia.site.decoration.Menu;
@@ -41,8 +30,11 @@ import org.apache.maven.doxia.siterenderer.RenderingContext;
 import org.apache.maven.doxia.siterenderer.SiteRenderingContext;
 import org.apache.maven.doxia.tools.SiteToolException;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.ReportPlugin;
+import org.apache.maven.model.Reporting;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.site.descriptor.AbstractSiteDescriptorMojo;
@@ -50,24 +42,29 @@ import org.apache.maven.reporting.MavenReport;
 import org.apache.maven.reporting.exec.MavenReportExecution;
 import org.apache.maven.reporting.exec.MavenReportExecutor;
 import org.apache.maven.reporting.exec.MavenReportExecutorRequest;
-import org.apache.maven.reporting.exec.ReportPlugin;
-import org.codehaus.plexus.PlexusConstants;
-import org.codehaus.plexus.PlexusContainer;
-import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
-import org.codehaus.plexus.context.Context;
-import org.codehaus.plexus.context.ContextException;
-import org.codehaus.plexus.personality.plexus.lifecycle.phase.Contextualizable;
 import org.codehaus.plexus.util.ReaderFactory;
 import org.codehaus.plexus.util.StringUtils;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+import static org.apache.maven.shared.utils.logging.MessageUtils.buffer;
 
 /**
  * Base class for site rendering mojos.
  *
  * @author <a href="mailto:brett@apache.org">Brett Porter</a>
- * @version $Id: AbstractSiteRenderingMojo.java 1767163 2016-10-30 14:50:13Z hboutemy $
+ *
  */
-public abstract class AbstractSiteRenderingMojo
-    extends AbstractSiteDescriptorMojo implements Contextualizable
+public abstract class AbstractSiteRenderingMojo extends AbstractSiteDescriptorMojo
 {
     /**
      * Module type exclusion mappings
@@ -93,8 +90,10 @@ public abstract class AbstractSiteRenderingMojo
      * are disabled. It is highly recommended that you package this as a skin instead.
      *
      * @since 2.0-beta-5
+     * @deprecated Upcoming major Doxia version removes support for template files in favor of skins.
      */
     @Parameter( property = "templateFile" )
+    @Deprecated
     private File templateFile;
 
     /**
@@ -125,10 +124,14 @@ public abstract class AbstractSiteRenderingMojo
     private File xdocDirectory;
 
     /**
-     * Directory containing generated documentation.
-     * This is used to pick up other source docs that might have been generated at build time.
+     * Directory containing generated documentation in source format (Doxia supported markup).
+     * This is used to pick up other source docs that might have been generated at build time (by reports or any other
+     * build time mean).
+     * This directory is expected to have the same structure as <code>siteDirectory</code>
+     * (ie. one directory per Doxia-source-supported markup types).
      *
-     * @todo should we deprecate in favour of reports?
+     * todo should we deprecate in favour of reports directly using Doxia Sink API, without this Doxia source
+     * intermediate step?
      */
     @Parameter( alias = "workingDirectory", defaultValue = "${project.build.directory}/generated-site" )
     protected File generatedSiteDirectory;
@@ -140,20 +143,13 @@ public abstract class AbstractSiteRenderingMojo
     protected MavenSession mavenSession;
 
     /**
-     * <p>Configuration section <b>used internally</b> by Maven 3.</p>
-     * <p>More details available here:
-     * <a href="http://maven.apache.org/plugins/maven-site-plugin/maven-3.html#Configuration_formats" target="_blank">
-     * http://maven.apache.org/plugins/maven-site-plugin/maven-3.html#Configuration_formats</a>
-     * </p>
-     * <p><b>Note:</b> using this field is not mandatory with Maven 3 as Maven core injects usual
-     * <code>&lt;reporting&gt;</code> section into this field.</p>
+     * replaces previous reportPlugins parameter, that was injected by Maven core from
+     * reporting section: but this new configuration format has been abandoned.
      *
-     * @since 3.0-beta-1 (and read-only since 3.3)
+     * @since 3.7.1
      */
-    @Parameter( readonly = true )
-    private ReportPlugin[] reportPlugins;
-
-    private PlexusContainer container;
+    @Parameter( defaultValue = "${project.reporting}", readonly = true )
+    private Reporting reporting;
 
     /**
      * Whether to generate the summary page for project reports: project-info.html.
@@ -178,6 +174,9 @@ public abstract class AbstractSiteRenderingMojo
      */
     @Parameter( property = "outputEncoding", defaultValue = "${project.reporting.outputEncoding}" )
     private String outputEncoding;
+
+    @Component
+    protected MavenReportExecutor mavenReportExecutor;
 
     /**
      * Gets the input files encoding.
@@ -208,13 +207,6 @@ public abstract class AbstractSiteRenderingMojo
     @Parameter
     private boolean saveProcessedContent;
 
-    /** {@inheritDoc} */
-    public void contextualize( Context context )
-        throws ContextException
-    {
-        container = (PlexusContainer) context.get( PlexusConstants.PLEXUS_KEY );
-    }
-
     protected void checkInputEncoding()
     {
         if ( StringUtils.isEmpty( inputEncoding ) )
@@ -227,41 +219,16 @@ public abstract class AbstractSiteRenderingMojo
     protected List<MavenReportExecution> getReports()
         throws MojoExecutionException
     {
-        List<MavenReportExecution> allReports;
+        MavenReportExecutorRequest mavenReportExecutorRequest = new MavenReportExecutorRequest();
+        mavenReportExecutorRequest.setLocalRepository( localRepository );
+        mavenReportExecutorRequest.setMavenSession( mavenSession );
+        mavenReportExecutorRequest.setProject( project );
+        mavenReportExecutorRequest.setReportPlugins( getReportingPlugins() );
 
-        if ( isMaven3OrMore() )
-        {
-            // Maven 3
-            MavenReportExecutorRequest mavenReportExecutorRequest = new MavenReportExecutorRequest();
-            mavenReportExecutorRequest.setLocalRepository( localRepository );
-            mavenReportExecutorRequest.setMavenSession( mavenSession );
-            mavenReportExecutorRequest.setProject( project );
-            mavenReportExecutorRequest.setReportPlugins( reportPlugins );
-
-            MavenReportExecutor mavenReportExecutor;
-            try
-            {
-                mavenReportExecutor = (MavenReportExecutor) container.lookup( MavenReportExecutor.class.getName() );
-            }
-            catch ( ComponentLookupException e )
-            {
-                throw new MojoExecutionException( "could not get MavenReportExecutor component", e );
-            }
-
-            allReports = mavenReportExecutor.buildMavenReports( mavenReportExecutorRequest );
-        }
-        else
-        {
-            // Maven 2
-            allReports = new ArrayList<MavenReportExecution>( reports.size() );
-            for ( MavenReport report : reports )
-            {
-                allReports.add( new MavenReportExecution( report ) );
-            }
-        }
+        List<MavenReportExecution> allReports = mavenReportExecutor.buildMavenReports( mavenReportExecutorRequest );
 
         // filter out reports that can't be generated
-        List<MavenReportExecution> reportExecutions = new ArrayList<MavenReportExecution>( allReports.size() );
+        List<MavenReportExecution> reportExecutions = new ArrayList<>( allReports.size() );
         for ( MavenReportExecution exec : allReports )
         {
             if ( exec.canGenerateReport() )
@@ -269,8 +236,39 @@ public abstract class AbstractSiteRenderingMojo
                 reportExecutions.add( exec );
             }
         }
-
         return reportExecutions;
+    }
+
+    /**
+     * Get the report plugins from reporting section, adding if necessary (i.e. not excluded)
+     * default reports (i.e. maven-project-info-reports)
+     *
+     * @return the effective list of reports
+     * @since 3.7.1
+     */
+    private ReportPlugin[] getReportingPlugins()
+    {
+        List<ReportPlugin> reportingPlugins = reporting.getPlugins();
+
+        // MSITE-806: add default report plugin like done in maven-model-builder DefaultReportingConverter
+        boolean hasMavenProjectInfoReportsPlugin = false;
+        for ( ReportPlugin plugin : reportingPlugins )
+        {
+            if ( "org.apache.maven.plugins".equals( plugin.getGroupId() )
+                && "maven-project-info-reports-plugin".equals( plugin.getArtifactId() ) )
+            {
+                hasMavenProjectInfoReportsPlugin = true;
+                break;
+            }
+        }
+
+        if ( !reporting.isExcludeDefaults() && !hasMavenProjectInfoReportsPlugin )
+        {
+            ReportPlugin mpir = new ReportPlugin();
+            mpir.setArtifactId( "maven-project-info-reports-plugin" );
+            reportingPlugins.add( mpir );
+        }
+        return reportingPlugins.toArray( new ReportPlugin[reportingPlugins.size()] );
     }
 
     protected SiteRenderingContext createSiteRenderingContext( Locale locale )
@@ -279,7 +277,7 @@ public abstract class AbstractSiteRenderingMojo
         DecorationModel decorationModel = prepareDecorationModel( locale );
         if ( attributes == null )
         {
-            attributes = new HashMap<String, Object>();
+            attributes = new HashMap<>();
         }
 
         if ( attributes.get( "project" ) == null )
@@ -306,7 +304,8 @@ public abstract class AbstractSiteRenderingMojo
         SiteRenderingContext context;
         if ( templateFile != null )
         {
-            getLog().info( "Rendering site with " + templateFile + " template file." );
+            getLog().info( buffer().a( "Rendering content with " ).strong( templateFile
+                + " template file" ).a( '.' ).toString() );
 
             if ( !templateFile.exists() )
             {
@@ -322,7 +321,8 @@ public abstract class AbstractSiteRenderingMojo
                 Artifact skinArtifact =
                     siteTool.getSkinArtifactFromRepository( localRepository, repositories, decorationModel );
 
-                getLog().info( "Rendering site with " + skinArtifact.getId() + " skin." );
+                getLog().info( buffer().a( "Rendering content with " ).strong( skinArtifact.getId()
+                    + " skin" ).a( '.' ).toString() );
 
                 context = siteRenderer.createContextForSkin( skinArtifact, attributes, decorationModel,
                                                              project.getName(), locale );
@@ -339,6 +339,7 @@ public abstract class AbstractSiteRenderingMojo
         }
 
         // Generate static site
+        context.setRootDirectory( project.getBasedir() );
         if ( !locale.getLanguage().equals( Locale.getDefault().getLanguage() ) )
         {
             context.addSiteDirectory( new File( siteDirectory, locale.getLanguage() ) );
@@ -382,9 +383,9 @@ public abstract class AbstractSiteRenderingMojo
                                                       Map<String, DocumentRenderer> documents, Locale locale )
     {
         // copy Collection to prevent ConcurrentModificationException
-        List<MavenReportExecution> filtered = new ArrayList<MavenReportExecution>( reports );
+        List<MavenReportExecution> filtered = new ArrayList<>( reports );
 
-        Map<String, MavenReport> reportsByOutputName = new LinkedHashMap<String, MavenReport>();
+        Map<String, MavenReport> reportsByOutputName = new LinkedHashMap<>();
         for ( MavenReportExecution mavenReportExecution : filtered )
         {
             MavenReport report = mavenReportExecution.getMavenReport();
@@ -396,21 +397,22 @@ public abstract class AbstractSiteRenderingMojo
 
             if ( documents.containsKey( outputName ) )
             {
-                String displayLanguage = locale.getDisplayLanguage( Locale.ENGLISH );
-
                 String reportMojoInfo =
                     ( mavenReportExecution.getGoal() == null ) ? "" : ( " ("
                         + mavenReportExecution.getPlugin().getArtifactId() + ':'
                         + mavenReportExecution.getPlugin().getVersion() + ':' + mavenReportExecution.getGoal() + ')' );
 
                 getLog().info( "Skipped \"" + report.getName( locale ) + "\" report" + reportMojoInfo + ", file \""
-                                   + outputName + "\" already exists for the " + displayLanguage + " version." );
+                                   + outputName + "\" already exists." );
 
                 reports.remove( mavenReportExecution );
             }
             else
             {
-                RenderingContext renderingContext = new RenderingContext( siteDirectory, outputName );
+                String reportMojoInfo = mavenReportExecution.getPlugin().getGroupId() + ':'
+                    + mavenReportExecution.getPlugin().getArtifactId() + ':'
+                    + mavenReportExecution.getPlugin().getVersion() + ':' + mavenReportExecution.getGoal();
+                RenderingContext renderingContext = new RenderingContext( siteDirectory, outputName, reportMojoInfo );
                 DocumentRenderer renderer =
                     new ReportDocumentRenderer( mavenReportExecution, renderingContext, getLog() );
                 documents.put( outputName, renderer );
@@ -428,13 +430,13 @@ public abstract class AbstractSiteRenderingMojo
      */
     protected Map<String, List<MavenReport>> categoriseReports( Collection<MavenReport> reports )
     {
-        Map<String, List<MavenReport>> categories = new LinkedHashMap<String, List<MavenReport>>();
+        Map<String, List<MavenReport>> categories = new LinkedHashMap<>();
         for ( MavenReport report : reports )
         {
             List<MavenReport> categoryReports = categories.get( report.getCategoryName() );
             if ( categoryReports == null )
             {
-                categoryReports = new ArrayList<MavenReport>();
+                categoryReports = new ArrayList<>();
                 categories.put( report.getCategoryName(), categoryReports );
             }
             categoryReports.add( report );
@@ -448,13 +450,20 @@ public abstract class AbstractSiteRenderingMojo
      * <li>reports,</li>
      * <li>"Project Information" and "Project Reports" category summaries.</li>
      * </ul>
+     *
+     * @param context the site context
+     * @param reports the documents
+     * @param locale the locale
+     * @return the documents and their renderers
+     * @throws IOException in case of file reading issue
+     * @throws RendererException in case of Doxia rendering issue
      * @see CategorySummaryDocumentRenderer
      */
     protected Map<String, DocumentRenderer> locateDocuments( SiteRenderingContext context,
                                                              List<MavenReportExecution> reports, Locale locale )
         throws IOException, RendererException
     {
-        Map<String, DocumentRenderer> documents = siteRenderer.locateDocumentFiles( context );
+        Map<String, DocumentRenderer> documents = siteRenderer.locateDocumentFiles( context, true );
 
         Map<String, MavenReport> reportsByOutputName = locateReports( reports, documents, locale );
 
@@ -469,7 +478,9 @@ public abstract class AbstractSiteRenderingMojo
             // add "Project Information" category summary document
             List<MavenReport> categoryReports = categories.get( MavenReport.CATEGORY_PROJECT_INFORMATION );
 
-            RenderingContext renderingContext = new RenderingContext( siteDirectory, "project-info.html" );
+            RenderingContext renderingContext =
+                new RenderingContext( siteDirectory, "project-info.html",
+                                      getSitePluginInfo() + ":CategorySummaryDocumentRenderer" );
             String title = i18n.getString( "site-plugin", locale, "report.information.title" );
             String desc1 = i18n.getString( "site-plugin", locale, "report.information.description1" );
             String desc2 = i18n.getString( "site-plugin", locale, "report.information.description2" );
@@ -490,7 +501,9 @@ public abstract class AbstractSiteRenderingMojo
         {
             // add "Project Reports" category summary document
             List<MavenReport> categoryReports = categories.get( MavenReport.CATEGORY_PROJECT_REPORTS );
-            RenderingContext renderingContext = new RenderingContext( siteDirectory, "project-reports.html" );
+            RenderingContext renderingContext =
+                new RenderingContext( siteDirectory, "project-reports.html",
+                                      getSitePluginInfo() + ":CategorySummaryDocumentRenderer" );
             String title = i18n.getString( "site-plugin", locale, "report.project.title" );
             String desc1 = i18n.getString( "site-plugin", locale, "report.project.description1" );
             String desc2 = i18n.getString( "site-plugin", locale, "report.project.description2" );
@@ -509,6 +522,11 @@ public abstract class AbstractSiteRenderingMojo
         return documents;
     }
 
+    private String getSitePluginInfo()
+    {
+        PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get( "pluginDescriptor" );
+        return pluginDescriptor.getId();
+    }
     protected void populateReportItems( DecorationModel decorationModel, Locale locale,
                                         Map<String, MavenReport> reportsByOutputName )
     {
