@@ -19,16 +19,6 @@ package org.apache.maven.plugins.site.run;
  * under the License.
  */
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 import org.apache.maven.doxia.siterenderer.DocumentRenderer;
 import org.apache.maven.doxia.siterenderer.SiteRenderingContext;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -38,19 +28,26 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.site.render.AbstractSiteRenderingMojo;
 import org.apache.maven.reporting.exec.MavenReportExecution;
 import org.codehaus.plexus.util.IOUtil;
-import org.mortbay.jetty.Connector;
-import org.mortbay.jetty.Handler;
-import org.mortbay.jetty.Server;
-import org.mortbay.jetty.handler.DefaultHandler;
-import org.mortbay.jetty.nio.SelectChannelConnector;
-import org.mortbay.jetty.webapp.WebAppContext;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.webapp.WebAppContext;
+
+import static org.apache.maven.shared.utils.logging.MessageUtils.buffer;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * Starts the site up, rendering documents as requested for faster editing.
  * It uses Jetty as the web server.
  *
  * @author <a href="mailto:brett@apache.org">Brett Porter</a>
- * @version $Id: SiteRunMojo.java 1742353 2016-05-05 03:22:53Z schulte $
+ *
  */
 @Mojo( name = "run", aggregator = true, requiresReports = true )
 public class SiteRunMojo
@@ -68,8 +65,6 @@ public class SiteRunMojo
     @Parameter( property = "port", defaultValue = "8080" )
     private int port;
 
-    private static final int MAX_IDLE_TIME = 30000;
-
     /**
      * @see org.apache.maven.plugin.AbstractMojo#execute()
      */
@@ -78,24 +73,15 @@ public class SiteRunMojo
     {
         checkInputEncoding();
 
-        Server server = new Server();
+        Server server = new Server( port );
         server.setStopAtShutdown( true );
-
-        Connector defaultConnector = getDefaultConnector();
-        server.setConnectors( new Connector[] { defaultConnector } );
 
         WebAppContext webapp = createWebApplication();
         webapp.setServer( server );
 
-        DefaultHandler defaultHandler = new DefaultHandler();
-        defaultHandler.setServer( server );
+        server.setHandler( webapp );
 
-        Handler[] handlers = new Handler[2];
-        handlers[0] = webapp;
-        handlers[1] = defaultHandler;
-        server.setHandlers( handlers );
-
-        getLog().info( "Starting Jetty on http://localhost:" + port + "/" );
+        getLog().info( buffer().a( "Starting Jetty on " ).strong( "http://localhost:" + port + "/" ).toString() );
         try
         {
             server.start();
@@ -122,30 +108,15 @@ public class SiteRunMojo
         File webXml = new File( tempWebappDirectory, "WEB-INF/web.xml" );
         webXml.getParentFile().mkdirs();
 
-        InputStream inStream = null;
-        FileOutputStream outStream = null;
-        try
+
+        try ( InputStream inStream = getClass().getResourceAsStream( "/run/web.xml" ); //
+            FileOutputStream outStream = new FileOutputStream( webXml ) )
         {
-            inStream = getClass().getResourceAsStream( "/run/web.xml" );
-            outStream = new FileOutputStream( webXml );
             IOUtil.copy( inStream, outStream );
-            outStream.close();
-            outStream = null;
-            inStream.close();
-            inStream = null;
-        }
-        catch ( FileNotFoundException e )
-        {
-            throw new MojoExecutionException( "Unable to construct temporary webapp for running site", e );
         }
         catch ( IOException e )
         {
             throw new MojoExecutionException( "Unable to construct temporary webapp for running site", e );
-        }
-        finally
-        {
-            IOUtil.close( outStream );
-            IOUtil.close( inStream );
         }
 
         WebAppContext webapp = new WebAppContext();
@@ -172,7 +143,7 @@ public class SiteRunMojo
 
         try
         {
-            Map<String, DoxiaBean> i18nDoxiaContexts = new HashMap<String, DoxiaBean>();
+            Map<String, DoxiaBean> i18nDoxiaContexts = new HashMap<>();
 
             for ( Locale locale : localesList )
             {
@@ -222,14 +193,6 @@ public class SiteRunMojo
             throw new MojoExecutionException( "Unable to set up webapp", e );
         }
         return webapp;
-    }
-
-    private Connector getDefaultConnector()
-    {
-        Connector connector = new SelectChannelConnector();
-        connector.setPort( port );
-        connector.setMaxIdleTime( MAX_IDLE_TIME );
-        return connector;
     }
 
     public void setTempWebappDirectory( File tempWebappDirectory )

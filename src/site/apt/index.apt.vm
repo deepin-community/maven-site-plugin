@@ -31,10 +31,7 @@ ${project.name}
 
  The Site Plugin is used to generate a site for the project. The generated site also includes the project's reports
  that were configured in the POM.
-
- This is the site for <<version 3>> of the maven-site-plugin. It requires at least Maven ${prerequisiteMavenVersion} to run. If you
- are looking for <<version 2>> you can find it {{{/plugins/maven-site-plugin-2.x/index.html}here}}.
-
+ 
  Please read the {{{./migrate.html}migration guide}} if you want to upgrade from a previous version.
 
 * Goals Overview
@@ -74,37 +71,45 @@ ${project.name}
   specific use cases are described in the examples given below.
 
   In case you still have questions regarding the plugin's usage, please have a look at the {{{./faq.html}FAQ}} and feel
-  free to contact the {{{./mail-lists.html}user mailing list}}. The posts to the mailing list are archived and could
+  free to contact the {{{./mailing-lists.html}user mailing list}}. The posts to the mailing list are archived and could
   already contain the answer to your question as part of an older thread. Hence, it is also worth browsing/searching
-  the {{{./mail-lists.html}mail archive}}.
+  the {{{./mailing-lists.html}mail archive}}.
 
-  If you feel like the plugin is missing a feature or has a defect, you can fill a feature request or bug report in our
-  {{{./issue-tracking.html}issue tracker}}. When creating a new issue, please provide a comprehensive description of your
+  If you feel like the plugin is missing a feature or has a defect, you can file a feature request or bug report in our
+  {{{./issue-management.html}issue tracker}}. When creating a new issue, please provide a comprehensive description of your
   concern. Especially for fixing bugs it is crucial that the developers can reproduce your problem. For this reason,
-  entire debug logs, POMs or most preferably little demo projects attached to the issue are very much appreciated.
+  entire debug logs, POMs, or, most preferably, little demo projects attached to the issue are very much appreciated.
   Of course, patches are welcome, too. Contributors can check out the project from our
-  {{{./source-repository.html}source repository}} and will find supplementary information in the
+  {{{./scm.html}source repository}} and will find supplementary information in the
   {{{/guides/development/guide-helping.html}guide to helping with Maven}}.
 
 * Examples
 
-   The following examples show how to use the Site Plugin in more advanced usecases:
+   The following examples show how to use the Site Plugin in more advanced use cases:
 
    * {{{./examples/creating-content.html}Creating Content}}
 
    * {{{./examples/sitedescriptor.html}Configuring the Site Descriptor}}
 
-   * {{{./examples/configuring-reports.html}Configuring Reports}}
-
-   * {{{./examples/adding-deploy-protocol.html}Adding a Protocol to Deploy the Site}}
-
    * {{{./examples/siterun.html}Configuring Site Run}}
-
-   * {{{./examples/templatefile.html}Changing the Template File}}
-
-   * {{{./examples/creatingskins.html}Creating Skins}}
 
    * {{{./examples/moduleexcludes.html}Excluding Document Formats}}
 
-   * {{{./examples/site-deploy-to-sourceforge.net.html}Deploying to sourceforge.net}}
+** Reports
+
+   * {{{./examples/configuring-reports.html}Configuring Reports}}
+
+   * {{{./i18n.html}Reports Internationalization}}
+
+** Site Template
+
+     * {{{./examples/templatefile.html}Changing the Template File}}
+
+     * {{{./examples/creatingskins.html}Creating Skins}}
+
+** Deploying
+
+     * {{{./examples/adding-deploy-protocol.html}Adding a Protocol to Deploy the Site}}
+
+     * {{{./examples/site-deploy-to-sourceforge.net.html}Deploying to sourceforge.net}}
 

@@ -34,7 +34,7 @@ import org.apache.maven.execution.MavenExecutionRequest;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.testing.AbstractMojoTestCase;
-import org.apache.maven.plugins.site.deploy.SimpleDavServerHandler.HttpRequest;
+
 import org.apache.maven.plugins.site.stubs.SiteMavenProjectStub;
 import org.apache.maven.settings.Proxy;
 import org.apache.maven.settings.Settings;
@@ -43,12 +43,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author Olivier Lamy
- * @version $Id: AbstractSiteDeployWebDavTest.java 1719819 2015-12-13 19:10:53Z hboutemy $
+ *
  */
 @RunWith( JUnit4.class )
 public abstract class AbstractSiteDeployWebDavTest
@@ -56,8 +54,6 @@ public abstract class AbstractSiteDeployWebDavTest
 {
 
     File siteTargetPath = new File( getBasedir() + File.separator + "target" + File.separator + "siteTargetDeploy" );
-
-    private Logger log = LoggerFactory.getLogger( getClass() );
 
     @Before
     public void setUp()
@@ -158,18 +154,12 @@ public abstract class AbstractSiteDeployWebDavTest
             assertContentInFiles();
 
             assertTrue( requestsContainsProxyUse( simpleDavServerHandler.httpRequests ) );
-
-            for ( HttpRequest rq : simpleDavServerHandler.httpRequests )
-            {
-                log.info( rq.toString() );
-            }
-
         }
         finally
         {
             simpleDavServerHandler.stop();
-        }        
-        
+        }
+
     }
 
     @Test
@@ -184,7 +174,7 @@ public abstract class AbstractSiteDeployWebDavTest
 
         AuthAsyncProxyServlet servlet = new AuthAsyncProxyServlet( authentications, siteTargetPath );
 
-        SimpleDavServerHandler simpleDavServerHandler = new SimpleDavServerHandler( servlet );        
+        SimpleDavServerHandler simpleDavServerHandler = new SimpleDavServerHandler( servlet );
         try
         {
             File pluginXmlFile = getTestFile( "src/test/resources/unit/deploy-dav/pom.xml" );
@@ -242,16 +232,12 @@ public abstract class AbstractSiteDeployWebDavTest
             assertContentInFiles();
             assertTrue( requestsContainsProxyUse( servlet.httpRequests ) );
             assertAtLeastOneRequestContainsHeader( servlet.httpRequests, "Proxy-Authorization" );
-            for ( HttpRequest rq : servlet.httpRequests )
-            {
-                log.info( rq.toString() );
-            }
         }
         finally
         {
             simpleDavServerHandler.stop();
-        }  
-    }        
+        }
+    }
 
     private void assertContentInFiles()
         throws Exception
