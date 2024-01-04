@@ -42,10 +42,10 @@ import org.codehaus.plexus.archiver.jar.ManifestException;
  * Bundles the site output into a JAR so that it can be deployed to a repository.
  *
  * @author <a href="mailto:mbeerman@yahoo.com">Matthew Beermann</a>
- * @version $Id: SiteJarMojo.java 1747441 2016-06-08 19:41:38Z khmarbaise $
+ *
  * @since 2.0-beta-6
  */
-// MSITE-665: requiresDependencyResolution workaround for MPLUGIN-253 
+// MSITE-665: requiresDependencyResolution workaround for MPLUGIN-253
 @Mojo( name = "jar", defaultPhase = LifecyclePhase.PACKAGE, requiresDependencyResolution = ResolutionScope.TEST,
        requiresReports = true )
 public class SiteJarMojo
@@ -116,6 +116,16 @@ public class SiteJarMojo
     private String[] archiveExcludes;
 
     /**
+     * Timestamp for reproducible output archive entries, either formatted as ISO 8601
+     * <code>yyyy-MM-dd'T'HH:mm:ssXXX</code> or as an int representing seconds since the epoch (like
+     * <a href="https://reproducible-builds.org/docs/source-date-epoch/">SOURCE_DATE_EPOCH</a>).
+     *
+     * @since 3.9.0
+     */
+    @Parameter( defaultValue = "${project.build.outputTimestamp}" )
+    private String outputTimestamp;
+
+    /**
      * @see org.apache.maven.plugin.Mojo#execute()
      */
     public void execute()
@@ -127,10 +137,7 @@ public class SiteJarMojo
             return;
         }
 
-        if ( !outputDirectory.exists() )
-        {
-            super.execute();
-        }
+        super.execute();
 
         try
         {
@@ -146,19 +153,7 @@ public class SiteJarMojo
                 getLog().info( "NOT adding site jar to the list of attached artifacts." );
             }
         }
-        catch ( ArchiverException e )
-        {
-            throw new MojoExecutionException( "Error while creating archive.", e );
-        }
-        catch ( IOException e )
-        {
-            throw new MojoExecutionException( "Error while creating archive.", e );
-        }
-        catch ( ManifestException e )
-        {
-            throw new MojoExecutionException( "Error while creating archive.", e );
-        }
-        catch ( DependencyResolutionRequiredException e )
+        catch ( ArchiverException | IOException | ManifestException | DependencyResolutionRequiredException e )
         {
             throw new MojoExecutionException( "Error while creating archive.", e );
         }
@@ -191,14 +186,18 @@ public class SiteJarMojo
         File siteJar = new File( jarOutputDirectory, jarFilename );
 
         MavenArchiver archiver = new MavenArchiver();
+        archiver.setCreatedBy( "Maven Site Plugin", "org.apache.maven.plugins", "maven-site-plugin" );
 
         archiver.setArchiver( this.jarArchiver );
 
         archiver.setOutputFile( siteJar );
 
+        // configure for Reproducible Builds based on outputTimestamp value
+        archiver.configureReproducible( outputTimestamp );
+
         if ( !siteDirectory.isDirectory() )
         {
-            getLog().warn( "JAR will be empty - no content was marked for inclusion !" );
+            getLog().warn( "JAR will be empty - no content was marked for inclusion!" );
         }
         else
         {

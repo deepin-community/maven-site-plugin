@@ -19,21 +19,17 @@ package org.apache.maven.plugins.site;
  * under the License.
  */
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
-import java.util.Locale;
-import java.util.Properties;
-
 import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.apache.maven.doxia.tools.SiteTool;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.rtinfo.RuntimeInformation;
 import org.codehaus.plexus.i18n.I18N;
-import org.codehaus.plexus.util.IOUtil;
+
+import java.util.List;
+import java.util.Locale;
 
 /**
  * Base class for site mojos.
@@ -90,41 +86,13 @@ public abstract class AbstractSiteMojo
     @Parameter( defaultValue = "${reactorProjects}", required = true, readonly = true )
     protected List<MavenProject> reactorProjects;
 
-    /**
-     * Check the current Maven version to see if it's Maven 3.0 or newer.
-     */
-    protected static boolean isMaven3OrMore()
+    @Component
+    protected RuntimeInformation runtimeInformation;
+
+    @Deprecated
+    protected String getMavenVersion()
     {
-        return new ComparableVersion( getMavenVersion() ).compareTo( new ComparableVersion( "3.0" ) ) >= 0;
-    }
-
-    protected static String getMavenVersion()
-    {
-        // This relies on the fact that MavenProject is the in core classloader
-        // and that the core classloader is for the maven-core artifact
-        // and that should have a pom.properties file
-        // if this ever changes, we will have to revisit this code.
-        final Properties properties = new Properties();
-        final String corePomProperties = "META-INF/maven/org.apache.maven/maven-core/pom.properties";
-
-        InputStream in = null;
-        try
-        {
-            in = MavenProject.class.getClassLoader().getResourceAsStream( corePomProperties );
-            properties.load( in );
-            in.close();
-            in = null;
-        }
-        catch ( IOException ioe )
-        {
-            return "";
-        }
-        finally
-        {
-            IOUtil.close( in );
-        }
-
-        return properties.getProperty( "version" ).trim();
+        return runtimeInformation.getMavenVersion();
     }
 
     protected List<Locale> getLocales()

@@ -32,7 +32,7 @@ import org.codehaus.plexus.util.xml.XmlStreamReader;
 
 /**
  * @author <a href="mailto:vincent.siveton@gmail.com">Vincent Siveton</a>
- * @version $Id: SiteMavenProjectStub.java 1742353 2016-05-05 03:22:53Z schulte $
+ *
  */
 public class SiteMavenProjectStub
     extends MavenProjectStub
@@ -51,7 +51,6 @@ public class SiteMavenProjectStub
             reader = ReaderFactory.newXmlReader( new File( getBasedir(), "pom.xml" ) );
             setModel( new MavenXpp3Reader().read( reader ) );
             reader.close();
-            reader = null;
         }
         catch ( Exception e )
         {

@@ -17,6 +17,7 @@
 #   junit junit jar s/3\\..*/3.x/
 
 junit junit * s/.*/4.x/ * *
+org.apache.maven maven-aether-provider  * s/.*/3.x/ * *
 org.apache.maven maven-artifact         * s/.*/3.x/ * *
 org.apache.maven maven-compat           * s/.*/3.x/ * *
 org.apache.maven maven-core             * s/.*/3.x/ * *
@@ -24,10 +25,9 @@ org.apache.maven maven-model            * s/.*/3.x/ * *
 org.apache.maven maven-plugin-api       * s/.*/3.x/ * *
 org.apache.maven maven-settings         * s/.*/3.x/ * *
 org.apache.maven maven-settings-builder * s/.*/3.x/ * *
+org.apache.maven.plugins maven-plugins pom s/.*/debian/ * *
 org.apache.maven.reporting maven-reporting-api * s/.*/3.x/ * *
 org.codehaus.plexus plexus-component-metadata maven-plugin s/1.6/1.5.5/ * *
 org.codehaus.plexus plexus-utils * s/.*/2.x/ * *
-s/org.mortbay.jetty/org.eclipse.jetty/ s/jetty/jetty-webapp/ * s/.*/9.x/ * *
-s/org.mortbay.jetty/org.eclipse.jetty/ s/jetty-client/jetty-proxy/ * s/.*/9.x/ * *
-s/org.mortbay.jetty/org.eclipse.jetty/ * * s/.*/9.x/ * *
+org.eclipse.jetty * * s/.*/9.x/ * *
 javax.servlet s/servlet-api/javax.servlet-api/ * s/.*/debian/ * *

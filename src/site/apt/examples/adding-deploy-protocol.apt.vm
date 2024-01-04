@@ -29,18 +29,17 @@
 
 Adding a Protocol to Deploy the Site
 
-  Out of the box, Maven 3 only supports <<<file:>>>, <<<http:>>> and <<<https:>>> as transport protocols.
-  Maven 2 adds <<<scp:>>> to this list.
+  Out of the box, Maven only supports <<<file:>>>, <<<http:>>>, <<<https:>>>, and <<<scp:>>> as transport protocols.
 
   If you try to deploy a site with an unsupported protocol, you'll get an error:
 
-+-----+
+-----
 [ERROR] 
 Unsupported protocol: '...' for site deployment to distributionManagement.site.url=...
 Currently supported protocols are: ...
     Protocols may be added through wagon providers.
     For more information, see http://maven.apache.org/plugins/maven-site-plugin/examples/adding-deploy-protocol.html
-+-----+
+-----
 
   As explained in the error message, to deploy a site with a non-built-in protocol, you need to add the corresponding
   {{{/wagon/}wagon provider}}.

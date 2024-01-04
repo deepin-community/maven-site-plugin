@@ -20,10 +20,13 @@ package org.apache.maven.plugins.site.run;
  */
 
 import org.apache.maven.doxia.siterenderer.DocumentRenderer;
+import org.apache.maven.doxia.siterenderer.DoxiaDocumentRenderer;
 import org.apache.maven.doxia.siterenderer.Renderer;
 import org.apache.maven.doxia.siterenderer.RendererException;
 import org.apache.maven.doxia.siterenderer.SiteRenderingContext;
 import org.apache.maven.plugins.site.render.ReportDocumentRenderer;
+
+import static org.apache.maven.shared.utils.logging.MessageUtils.buffer;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -53,6 +56,8 @@ public class DoxiaFilter
 
     public static final String LOCALES_LIST_KEY = "localesList";
 
+    private ServletContext servletContext;
+
     private Renderer siteRenderer;
 
     private Map<String, DoxiaBean> i18nDoxiaContexts;
@@ -65,7 +70,7 @@ public class DoxiaFilter
     public void init( FilterConfig filterConfig )
         throws ServletException
     {
-        ServletContext servletContext = filterConfig.getServletContext();
+        servletContext = filterConfig.getServletContext();
 
         siteRenderer = (Renderer) servletContext.getAttribute( SITE_RENDERER_KEY );
 
@@ -100,17 +105,17 @@ public class DoxiaFilter
         Map<String, DocumentRenderer> documents;
         SiteRenderingContext generatedSiteContext;
 
-        String localeWanted = null;
+        String languageWanted = null;
         for ( Locale locale : localesList )
         {
             if ( path.startsWith( locale.getLanguage() + "/" ) )
             {
-                localeWanted = locale.toString();
-                path = path.substring( locale.getLanguage().length() + 1 );
+                languageWanted = locale.getLanguage();
+                path = path.substring( languageWanted.length() + 1 );
             }
         }
 
-        if ( localeWanted == null )
+        if ( languageWanted == null )
         {
             DoxiaBean defaultDoxiaBean = i18nDoxiaContexts.get( "default" );
             if ( defaultDoxiaBean == null )
@@ -123,10 +128,10 @@ public class DoxiaFilter
         }
         else
         {
-            DoxiaBean i18nDoxiaBean = i18nDoxiaContexts.get( localeWanted );
+            DoxiaBean i18nDoxiaBean = i18nDoxiaContexts.get( languageWanted );
             if ( i18nDoxiaBean == null )
             {
-                throw new ServletException( "No doxia bean found for the locale " + localeWanted );
+                throw new ServletException( "No doxia bean found for the language " + languageWanted );
             }
             context = i18nDoxiaBean.getContext();
             documents = i18nDoxiaBean.getDocuments();
@@ -141,6 +146,7 @@ public class DoxiaFilter
             try
             {
                 DocumentRenderer renderer = documents.get( path );
+                logDocumentRenderer( path, renderer );
                 renderer.renderDocument( servletResponse.getWriter(), siteRenderer, context );
 
                 if ( renderer instanceof ReportDocumentRenderer )
@@ -176,6 +182,7 @@ public class DoxiaFilter
                 if ( locateDocuments.containsKey( path ) )
                 {
                     DocumentRenderer renderer = locateDocuments.get( path );
+                    logDocumentRenderer( path, renderer );
                     renderer.renderDocument( servletResponse.getWriter(), siteRenderer, generatedSiteContext );
 
                     return;
@@ -188,6 +195,28 @@ public class DoxiaFilter
         }
 
         filterChain.doFilter( servletRequest, servletResponse );
+
+        servletContext.log( path );
+    }
+
+    private void logDocumentRenderer( String path, DocumentRenderer renderer )
+    {
+        String source;
+        if ( renderer instanceof DoxiaDocumentRenderer )
+        {
+            DoxiaDocumentRenderer doxiaDocumentRenderer = (DoxiaDocumentRenderer) renderer;
+            source = doxiaDocumentRenderer.getRenderingContext().getInputName();
+        }
+        else if ( renderer instanceof ReportDocumentRenderer )
+        {
+            ReportDocumentRenderer reportDocumentRenderer = (ReportDocumentRenderer) renderer;
+            source = reportDocumentRenderer.getReportMojoInfo();
+        }
+        else
+        {
+            source = renderer.getClass().getName();
+        }
+        servletContext.log( path + " -> " + buffer().strong( source ) );
     }
 
     /**

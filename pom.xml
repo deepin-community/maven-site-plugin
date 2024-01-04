@@ -25,12 +25,12 @@ under the License.
   <parent>
     <groupId>org.apache.maven.plugins</groupId>
     <artifactId>maven-plugins</artifactId>
-    <version>30</version>
-    <relativePath>../../pom/maven/maven-plugins/pom.xml</relativePath>
+    <version>36</version>
+    <relativePath />
   </parent>
 
   <artifactId>maven-site-plugin</artifactId>
-  <version>3.6</version>
+  <version>3.12.1</version>
   <packaging>maven-plugin</packaging>
 
   <name>Apache Maven Site Plugin</name>
@@ -170,55 +170,67 @@ under the License.
   </contributors>
 
   <prerequisites>
-    <maven>${prerequisiteMavenVersion}</maven>
+    <maven>${mavenVersion}</maven>
   </prerequisites>
 
   <scm>
-    <connection>scm:svn:http://svn.apache.org/repos/asf/maven/plugins/tags/maven-site-plugin-3.6</connection>
-    <developerConnection>scm:svn:https://svn.apache.org/repos/asf/maven/plugins/tags/maven-site-plugin-3.6</developerConnection>
-    <url>http://svn.apache.org/viewvc/maven/plugins/tags/maven-site-plugin-3.6</url>
+    <connection>scm:git:https://gitbox.apache.org/repos/asf/maven-site-plugin.git</connection>
+    <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/maven-site-plugin.git</developerConnection>
+    <url>https://github.com/apache/maven-site-plugin/tree/${project.scm.tag}</url>
+    <tag>maven-site-plugin-3.12.1</tag>
   </scm>
   <issueManagement>
     <system>JIRA</system>
     <url>https://issues.apache.org/jira/browse/MSITE</url>
   </issueManagement>
+  <ciManagement>
+    <system>Jenkins</system>
+    <url>https://ci-maven.apache.org/job/Maven/job/maven-box/job/maven-site-plugin/</url>
+  </ciManagement>
   <distributionManagement>
     <site>
       <id>apache.website</id>
-      <url>scm:svn:https://svn.apache.org/repos/infra/websites/production/maven/components/${maven.site.path}</url>
+      <url>scm:svn:https://svn.apache.org/repos/asf/maven/website/components/${maven.site.path}</url>
     </site>
   </distributionManagement>
 
   <properties>
-    <doxiaVersion>1.7</doxiaVersion>
-    <doxiaSitetoolsVersion>1.7.4</doxiaSitetoolsVersion>
-    <mavenVersion>3.0</mavenVersion>
-    <prerequisiteMavenVersion>2.2.1</prerequisiteMavenVersion>
-    <wagonVersion>1.0</wagonVersion>
-    <plexusVersion>1.5.4</plexusVersion>
-    <scmVersion>1.4</scmVersion>
+    <mavenVersion>3.2.5</mavenVersion>
+    <javaVersion>8</javaVersion>
+
+    <!-- for dependencies -->
+    <doxiaVersion>1.11.1</doxiaVersion>
+    <doxiaSitetoolsVersion>1.11.1</doxiaSitetoolsVersion>
+    <jettyVersion>9.4.46.v20220331</jettyVersion>
+    <wagonVersion>3.5.1</wagonVersion>
+    <slf4jVersion>1.7.36</slf4jVersion>
     <!-- for ITs -->
-    <javadocPluginVersion>2.9.1</javadocPluginVersion>
-    <projectInfoReportsPluginVersion>2.7</projectInfoReportsPluginVersion>
-    <checkstylePluginVersion>2.9.1</checkstylePluginVersion>
-    <pmdPluginVersion>3.0.1</pmdPluginVersion>
+    <checkstylePluginVersion>3.1.2</checkstylePluginVersion>
+    <javadocPluginVersion>3.3.2</javadocPluginVersion>
+    <pmdPluginVersion>3.16.0</pmdPluginVersion>
+    <jxrPluginVersion>3.2.0</jxrPluginVersion>
+    <projectInfoReportsPluginVersion>3.2.2</projectInfoReportsPluginVersion>
+    <surefirePluginVersion>2.22.2</surefirePluginVersion>
+    <surefire.version>2.22.2</surefire.version>
+    <project.build.outputTimestamp>2022-07-31T18:58:29Z</project.build.outputTimestamp>
+
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>org.apache.maven.reporting</groupId>
       <artifactId>maven-reporting-api</artifactId>
-      <version>3.0</version>
+      <version>3.1.1</version>
     </dependency>
     <dependency>
       <groupId>org.apache.maven.reporting</groupId>
       <artifactId>maven-reporting-exec</artifactId>
-      <version>1.3</version>
+      <version>1.6.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.maven.shared</groupId>
       <artifactId>maven-shared-utils</artifactId>
-      <version>3.1.0</version>
+      <version>3.3.4</version>
     </dependency>
 
     <!-- Maven -->
@@ -226,6 +238,7 @@ under the License.
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-artifact</artifactId>
       <version>${mavenVersion}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.maven</groupId>
@@ -237,38 +250,50 @@ under the License.
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-core</artifactId>
       <version>${mavenVersion}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-aether-provider</artifactId>
+      <version>${mavenVersion}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-model</artifactId>
       <version>${mavenVersion}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-plugin-api</artifactId>
       <version>${mavenVersion}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-settings</artifactId>
       <version>${mavenVersion}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-settings-builder</artifactId>
       <version>${mavenVersion}</version>
+      <scope>provided</scope>
     </dependency>
 
     <dependency>
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-archiver</artifactId>
-      <version>3.1.1</version>
+      <version>3.5.2</version>
     </dependency>
 
     <!-- dependencies to annotations -->
     <dependency>
       <groupId>org.apache.maven.plugin-tools</groupId>
       <artifactId>maven-plugin-annotations</artifactId>
+      <scope>provided</scope>
     </dependency>
 
     <!-- Plexus -->
@@ -276,12 +301,13 @@ under the License.
       <groupId>org.sonatype.sisu</groupId>
       <artifactId>sisu-inject-plexus</artifactId>
       <version>1.4.2</version>
+      <scope>provided</scope>
     </dependency>
 
     <dependency>
       <groupId>org.codehaus.plexus</groupId>
       <artifactId>plexus-archiver</artifactId>
-      <version>3.4</version>
+      <version>4.2.7</version>
     </dependency>
 
     <dependency>
@@ -298,13 +324,7 @@ under the License.
     <dependency>
       <groupId>org.codehaus.plexus</groupId>
       <artifactId>plexus-utils</artifactId>
-      <version>3.0.24</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.codehaus.plexus</groupId>
-      <artifactId>plexus-classworlds</artifactId>
-      <version>2.5.2</version>
+      <version>3.4.2</version>
     </dependency>
 
     <!-- Doxia -->
@@ -316,7 +336,17 @@ under the License.
 
     <dependency>
       <groupId>org.apache.maven.doxia</groupId>
+      <artifactId>doxia-core</artifactId>
+      <version>${doxiaVersion}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven.doxia</groupId>
       <artifactId>doxia-module-xhtml</artifactId>
+      <version>${doxiaVersion}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven.doxia</groupId>
+      <artifactId>doxia-module-xhtml5</artifactId>
       <version>${doxiaVersion}</version>
     </dependency>
     <dependency>
@@ -342,28 +372,47 @@ under the License.
       <version>${doxiaVersion}</version>
       <scope>runtime</scope>
     </dependency>
-
     <dependency>
-      <groupId>javax.servlet</groupId>
-      <artifactId>servlet-api</artifactId>
-      <version>2.5</version>
+      <groupId>org.apache.maven.doxia</groupId>
+      <artifactId>doxia-module-confluence</artifactId>
+      <version>${doxiaVersion}</version>
+      <scope>runtime</scope>
     </dependency>
-
+    <dependency>
+      <groupId>org.apache.maven.doxia</groupId>
+      <artifactId>doxia-module-docbook-simple</artifactId>
+      <version>${doxiaVersion}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven.doxia</groupId>
+      <artifactId>doxia-module-twiki</artifactId>
+      <version>${doxiaVersion}</version>
+      <scope>runtime</scope>
+    </dependency>
     <!-- Doxia Sitetools -->
     <dependency>
       <groupId>org.apache.maven.doxia</groupId>
       <artifactId>doxia-decoration-model</artifactId>
       <version>${doxiaSitetoolsVersion}</version>
     </dependency>
+
     <dependency>
       <groupId>org.apache.maven.doxia</groupId>
       <artifactId>doxia-site-renderer</artifactId>
       <version>${doxiaSitetoolsVersion}</version>
     </dependency>
+
     <dependency>
       <groupId>org.apache.maven.doxia</groupId>
       <artifactId>doxia-integration-tools</artifactId>
       <version>${doxiaSitetoolsVersion}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.codehaus.plexus</groupId>
+          <artifactId>plexus-container-default</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <!-- Wagon -->
@@ -371,6 +420,7 @@ under the License.
       <groupId>org.apache.maven.wagon</groupId>
       <artifactId>wagon-provider-api</artifactId>
       <version>${wagonVersion}</version>
+      <scope>provided</scope>
     </dependency>
 
     <dependency>
@@ -387,158 +437,140 @@ under the License.
     </dependency>
 
     <dependency>
-      <groupId>org.mortbay.jetty</groupId>
-      <artifactId>jetty</artifactId>
-      <version>6.1.25</version>
-    </dependency>
-    <dependency>
-      <groupId>org.mortbay.jetty</groupId>
-      <artifactId>jetty-util</artifactId>
-      <version>6.1.25</version>
+      <groupId>javax.servlet</groupId>
+      <artifactId>javax.servlet-api</artifactId>
+      <version>3.1.0</version>
+      <scope>provided</scope>
     </dependency>
 
     <dependency>
-      <groupId>org.mortbay.jetty</groupId>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-server</artifactId>
+      <version>${jettyVersion}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-servlet</artifactId>
+      <version>${jettyVersion}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-webapp</artifactId>
+      <version>${jettyVersion}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-util</artifactId>
+      <version>${jettyVersion}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-client</artifactId>
-      <version>6.1.25</version>
+      <version>${jettyVersion}</version>
       <scope>test</scope>
     </dependency>
 
-    <!-- note slf4j- upgrade possible until upgrade wagon-webdav-jackrabbit is upgraded too -->
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-proxy</artifactId>
+      <version>${jettyVersion}</version>
+      <scope>test</scope>
+    </dependency>
 
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>1.5.3</version>
+      <version>${slf4jVersion}</version>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-simple</artifactId>
-      <version>1.5.3</version>
+      <version>${slf4jVersion}</version>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>jcl-over-slf4j</artifactId>
-      <version>1.6.1</version>
+      <version>${slf4jVersion}</version>
       <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-lang3</artifactId>
-      <version>3.4</version>
     </dependency>
 
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
-      <version>2.5</version>
+      <version>2.11.0</version>
+      <scope>test</scope>
     </dependency>
 
     <!-- test -->
     <dependency>
       <groupId>org.apache.maven.plugin-testing</groupId>
       <artifactId>maven-plugin-testing-harness</artifactId>
-      <version>2.0-alpha-1</version>
+      <version>3.3.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.8.1</version>
+      <version>4.13.2</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
-
-  <build>
-    <pluginManagement>
-      <plugins>
-        <plugin>
-          <groupId>org.apache.rat</groupId>
-          <artifactId>apache-rat-plugin</artifactId>
-          <configuration>
-            <excludes combine.children="append">
-              <exclude>dependency-reduced-pom.xml</exclude>
-            </excludes>
-          </configuration>
-        </plugin>
-      </plugins>
-    </pluginManagement>
-    <plugins>
-      <plugin>
-        <groupId>org.codehaus.plexus</groupId>
-        <artifactId>plexus-component-metadata</artifactId>
-        <version>1.6</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>generate-metadata</goal>
-              <!--goal>generate-test-metadata</goal-->
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>1.4</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <artifactSet>
-                <includes>
-                  <include>org.apache.maven.reporting:maven-reporting-api</include>
-                  <include>org.apache.maven:maven-artifact</include>
-                </includes>
-              </artifactSet>
-              <filters>
-                <filter>
-                  <artifact>org.apache.maven.reporting:maven-reporting-api</artifact>
-                  <includes><!-- class not included in maven-reporting-api from Maven 2.2 -->
-                    <include>**/MavenMultiPageReport.class</include>
-                  </includes>
-                </filter>
-                <filter>
-                  <artifact>org.apache.maven:maven-artifact</artifact>
-                  <includes>
-                    <include>**/ComparableVersion.class</include>
-                    <include>**/ComparableVersion$*.class</include>
-                  </includes>
-                </filter>
-              </filters>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
 
   <profiles>
     <profile>
       <id>run-its</id>
       <build>
-        <pluginManagement>
-          <plugins>
-            <plugin>
-              <groupId>org.apache.maven.plugins</groupId>
-              <artifactId>maven-invoker-plugin</artifactId>
-              <configuration>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-invoker-plugin</artifactId>
+            <configuration>
+              <projectsDirectory>src/it/projects</projectsDirectory>
+              <settingsFile>src/it/mrm/settings.xml</settingsFile>
+              <filterProperties>
+                <mrm.repository.url>${mrm.repository.url}</mrm.repository.url>
+              </filterProperties>
+              <goals>
+                <goal>clean</goal>
+                <goal>${project.groupId}:${project.artifactId}:${project.version}:site</goal>
+              </goals>
+              <properties>
+                <maven.compiler.source>${maven.compiler.source}</maven.compiler.source>
+                <maven.compiler.target>${maven.compiler.target}</maven.compiler.target>
+              </properties>
+              <javaHome>${java.home}</javaHome>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>mrm-maven-plugin</artifactId>
+            <version>1.3.0</version>
+            <executions>
+              <execution>
                 <goals>
-                  <goal>clean</goal>
-                  <goal>${project.groupId}:${project.artifactId}:${project.version}:site</goal>
+                  <goal>start</goal>
+                  <goal>stop</goal>
                 </goals>
-              </configuration>
-            </plugin>
-          </plugins>
-        </pluginManagement>
+              </execution>
+            </executions>
+            <configuration>
+              <repositories>
+                <mockRepo>
+                  <source>src/it/mrm/repository</source>
+                </mockRepo>
+                <proxyRepo />
+              </repositories>
+            </configuration>
+          </plugin>
+        </plugins>
       </build>
     </profile>
 

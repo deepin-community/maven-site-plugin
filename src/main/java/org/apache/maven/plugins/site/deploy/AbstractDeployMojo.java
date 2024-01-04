@@ -30,7 +30,6 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.site.AbstractSiteMojo;
-import org.apache.maven.plugins.site.deploy.wagon.BugFixedRepository;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.settings.Proxy;
 import org.apache.maven.settings.Server;
@@ -51,7 +50,6 @@ import org.apache.maven.wagon.authorization.AuthorizationException;
 import org.apache.maven.wagon.observers.Debug;
 import org.apache.maven.wagon.proxy.ProxyInfo;
 import org.apache.maven.wagon.repository.Repository;
-import org.codehaus.classworlds.ClassRealm;
 import org.codehaus.plexus.PlexusConstants;
 import org.codehaus.plexus.PlexusContainer;
 import org.codehaus.plexus.component.configurator.ComponentConfigurationException;
@@ -67,7 +65,6 @@ import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import java.io.File;
-import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
@@ -131,7 +128,7 @@ public abstract class AbstractDeployMojo
     /**
      */
     @Component
-    private WagonManager wagonManager;
+    private WagonManager wagonManager; // maven-compat
 
     /**
      * The current user system settings for use in Maven.
@@ -169,15 +166,15 @@ public abstract class AbstractDeployMojo
             return;
         }
 
-        deployTo( new BugFixedRepository( getDeploySite().getId(), getDeploySite().getUrl() ) );
+        deployTo( new Repository( getDeploySite().getId(), getDeploySite().getUrl() ) );
     }
 
     /**
-     * Make sure the given url ends with a slash.
+     * Make sure the given URL ends with a slash.
      *
-     * @param url a String.
-     * @return if url already ends with '/' it is returned unchanged,
-     *         otherwise a '/' character is appended.
+     * @param url a String
+     * @return if url already ends with '/' it is returned unchanged.
+     *         Otherwise a '/' character is appended.
      */
     protected static String appendSlash( final String url )
     {
@@ -205,7 +202,7 @@ public abstract class AbstractDeployMojo
      * can tweak algorithm to determine this top site by implementing determineTopDistributionManagementSiteUrl().
      *
      * @return the site for deployment
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException in case of issue
      * @see #determineTopDistributionManagementSiteUrl()
      */
     protected String getTopDistributionManagementSiteUrl()
@@ -232,7 +229,7 @@ public abstract class AbstractDeployMojo
      * can tweak algorithm to determine this deploy site by implementing determineDeploySite().
      *
      * @return the site for deployment
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException in case of issue
      * @see #determineDeploySite()
      */
     protected Site getDeploySite()
@@ -252,13 +249,17 @@ public abstract class AbstractDeployMojo
      * Find the relative path between the distribution URLs of the top site and the current project.
      *
      * @return the relative path or "./" if the two URLs are the same.
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException in case of issue
      */
     protected String getDeployModuleDirectory()
         throws MojoExecutionException
     {
-        String relative = siteTool.getRelativePath( getSite( project ).getUrl(),
-                                                    getTopDistributionManagementSiteUrl() );
+        String to = getSite( project ).getUrl();
+
+        getLog().debug( "Mapping url source calculation: " );
+        String from = getTopDistributionManagementSiteUrl();
+
+        String relative = siteTool.getRelativePath( to, from );
 
         // SiteTool.getRelativePath() uses File.separatorChar,
         // so we need to convert '\' to '/' in order for the URL to be valid for Windows users
@@ -302,32 +303,10 @@ public abstract class AbstractDeployMojo
         try
         {
             configureWagon( wagon, repository.getId(), settings, container, getLog() );
-        }
-        catch ( TransferFailedException e )
-        {
-            throw new MojoExecutionException( "Unable to configure Wagon: '" + repository.getProtocol() + "'", e );
-        }
 
-        try
-        {
-            final ProxyInfo proxyInfo;
-            if ( !isMaven3OrMore() )
-            {
-                proxyInfo = getProxyInfo( repository, wagonManager );
-            }
-            else
-            {
-                try
-                {
-                    SettingsDecrypter settingsDecrypter = container.lookup( SettingsDecrypter.class );
+            SettingsDecrypter settingsDecrypter = container.lookup( SettingsDecrypter.class );
 
-                    proxyInfo = getProxy( repository, settingsDecrypter );
-                }
-                catch ( ComponentLookupException cle )
-                {
-                    throw new MojoExecutionException( "Unable to lookup SettingsDecrypter: " + cle.getMessage(), cle );
-                }
-            }
+            ProxyInfo proxyInfo = getProxy( repository, settingsDecrypter );
 
             push( directory, repository, wagon, proxyInfo, getLocales(), getDeployModuleDirectory() );
 
@@ -335,6 +314,14 @@ public abstract class AbstractDeployMojo
             {
                 chmod( wagon, repository, chmodOptions, chmodMode );
             }
+        }
+        catch ( ComponentLookupException cle )
+        {
+            throw new MojoExecutionException( "Unable to lookup SettingsDecrypter: " + cle.getMessage(), cle );
+        }
+        catch ( TransferFailedException e )
+        {
+            throw new MojoExecutionException( "Unable to configure Wagon: '" + repository.getProtocol() + "'", e );
         }
         finally
         {
@@ -365,7 +352,7 @@ public abstract class AbstractDeployMojo
             String longMessage =
                 "\n" + shortMessage + "\n" + "Currently supported protocols are: " + getSupportedProtocols() + ".\n"
                     + "    Protocols may be added through wagon providers.\n" + "    For more information, see "
-                    + "http://maven.apache.org/plugins/maven-site-plugin/examples/adding-deploy-protocol.html";
+                    + "https://maven.apache.org/plugins/maven-site-plugin/examples/adding-deploy-protocol.html";
 
             getLog().error( longMessage );
 
@@ -447,36 +434,22 @@ public abstract class AbstractDeployMojo
                 {
                     // TODO: this also uploads the non-default locales,
                     // is there a way to exclude directories in wagon?
-                    getLog().info( "   >>> to " + repository.getUrl() + relativeDir );
+                    getLog().info( "   >>> to " + appendSlash( repository.getUrl() ) + relativeDir );
 
                     wagon.putDirectory( inputDirectory, relativeDir );
                 }
                 else
                 {
-                    getLog().info( "   >>> to " + repository.getUrl() + locale.getLanguage() + "/" + relativeDir );
+                    getLog().info( "   >>> to " + appendSlash( repository.getUrl() ) + locale.getLanguage() + "/"
+                        + relativeDir );
 
                     wagon.putDirectory( new File( inputDirectory, locale.getLanguage() ),
                                         locale.getLanguage() + "/" + relativeDir );
                 }
             }
         }
-        catch ( ResourceDoesNotExistException e )
-        {
-            throw new MojoExecutionException( "Error uploading site", e );
-        }
-        catch ( TransferFailedException e )
-        {
-            throw new MojoExecutionException( "Error uploading site", e );
-        }
-        catch ( AuthorizationException e )
-        {
-            throw new MojoExecutionException( "Error uploading site", e );
-        }
-        catch ( ConnectionException e )
-        {
-            throw new MojoExecutionException( "Error uploading site", e );
-        }
-        catch ( AuthenticationException e )
+        catch ( ResourceDoesNotExistException | TransferFailedException | AuthorizationException | ConnectionException
+            |  AuthenticationException e )
         {
             throw new MojoExecutionException( "Error uploading site", e );
         }
@@ -502,21 +475,22 @@ public abstract class AbstractDeployMojo
     }
 
     /**
+     * Get proxy information.
      * <p>
      * Get the <code>ProxyInfo</code> of the proxy associated with the <code>host</code>
      * and the <code>protocol</code> of the given <code>repository</code>.
      * </p>
      * <p>
-     * Extract from <a href="http://java.sun.com/j2se/1.5.0/docs/guide/net/properties.html">
+     * Extract from <a href="https://docs.oracle.com/javase/1.5.0/docs/guide/net/properties.html">
      * J2SE Doc : Networking Properties - nonProxyHosts</a> : "The value can be a list of hosts,
      * each separated by a |, and in addition a wildcard character (*) can be used for matching"
      * </p>
      * <p>
-     * Defensively support for comma (",") and semi colon (";") in addition to pipe ("|") as separator.
+     * Defensively support comma (",") and semi colon (";") in addition to pipe ("|") as separator.
      * </p>
      *
-     * @param repository   the Repository to extract the ProxyInfo from.
-     * @param wagonManager the WagonManager used to connect to the Repository.
+     * @param repository   the Repository to extract the ProxyInfo from
+     * @param wagonManager the WagonManager used to connect to the Repository
      * @return a ProxyInfo object instantiated or <code>null</code> if no matching proxy is found
      */
     public static ProxyInfo getProxyInfo( Repository repository, WagonManager wagonManager )
@@ -566,11 +540,11 @@ public abstract class AbstractDeployMojo
     }
 
     /**
-     * Get proxy information for Maven 3.
+     * Get proxy information.
      *
-     * @param repository
-     * @param settingsDecrypter
-     * @return
+     * @param repository        the Repository to extract the ProxyInfo from
+     * @param settingsDecrypter settings password decrypter
+     * @return a ProxyInfo object instantiated or <code>null</code> if no matching proxy is found.
      */
     private ProxyInfo getProxy( Repository repository, SettingsDecrypter settingsDecrypter )
     {
@@ -599,13 +573,13 @@ public abstract class AbstractDeployMojo
                 {
                     getLog().warn( "fail to build URL with " + url );
                 }
-
             }
         }
         else
         {
             getLog().debug( "getProxy 'protocol': " + protocol );
         }
+
         if ( mavenSession != null && protocol != null )
         {
             MavenExecutionRequest request = mavenSession.getRequest();
@@ -652,12 +626,6 @@ public abstract class AbstractDeployMojo
     /**
      * Configure the Wagon with the information from serverConfigurationMap ( which comes from settings.xml )
      *
-     * @param wagon
-     * @param repositoryId
-     * @param settings
-     * @param container
-     * @param log
-     * @throws TransferFailedException
      * @todo Remove when {@link WagonManager#getWagon(Repository) is available}. It's available in Maven 2.0.5.
      */
     private static void configureWagon( Wagon wagon, String repositoryId, Settings settings, PlexusContainer container,
@@ -683,15 +651,7 @@ public abstract class AbstractDeployMojo
                 {
                     componentConfigurator =
                         (ComponentConfigurator) container.lookup( ComponentConfigurator.ROLE, "basic" );
-                    if ( isMaven3OrMore() )
-                    {
-                        componentConfigurator.configureComponent( wagon, plexusConf,
-                                                                  container.getContainerRealm() );
-                    }
-                    else
-                    {
-                        configureWagonWithMaven2( componentConfigurator, wagon, plexusConf, container );
-                    }
+                    componentConfigurator.configureComponent( wagon, plexusConf, container.getContainerRealm() );
                 }
                 catch ( final ComponentLookupException e )
                 {
@@ -719,33 +679,6 @@ public abstract class AbstractDeployMojo
                     }
                 }
             }
-        }
-    }
-
-    private static void configureWagonWithMaven2( ComponentConfigurator componentConfigurator, Wagon wagon,
-                                                  PlexusConfiguration plexusConf, PlexusContainer container )
-        throws ComponentConfigurationException
-    {
-        // in Maven 2.x   :
-        // * container.getContainerRealm() -> org.codehaus.classworlds.ClassRealm
-        // * componentConfiguration 3rd param is org.codehaus.classworlds.ClassRealm
-        // so use some reflection see MSITE-609
-        try
-        {
-            Method methodContainerRealm = container.getClass().getMethod( "getContainerRealm" );
-            ClassRealm realm = (ClassRealm) methodContainerRealm.invoke( container );
-
-            Method methodConfigure = componentConfigurator.getClass().getMethod( "configureComponent",
-                                                                                 new Class[]{ Object.class,
-                                                                                     PlexusConfiguration.class,
-                                                                                     ClassRealm.class } );
-
-            methodConfigure.invoke( componentConfigurator, wagon, plexusConf, realm );
-        }
-        catch ( Exception e )
-        {
-            throw new ComponentConfigurationException(
-                "Failed to configure wagon component for a Maven2 use " + e.getMessage(), e );
         }
     }
 
@@ -853,7 +786,7 @@ public abstract class AbstractDeployMojo
         private static final String MARK = "-_.!~*'()";
         private static final String RESERVED = ";/?:@&=+$,";
 
-        public static String encodeURI( final String uriString )
+        private static String encodeURI( final String uriString )
         {
             final char[] chars = uriString.toCharArray();
             final StringBuilder uri = new StringBuilder( chars.length );

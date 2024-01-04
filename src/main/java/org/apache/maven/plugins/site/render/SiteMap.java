@@ -37,7 +37,7 @@ import org.codehaus.plexus.i18n.I18N;
  * Generate a sitemap.
  *
  * @author ltheussl
- * @version $Id: SiteMap.java 1599008 2014-06-01 17:03:18Z hboutemy $
+ *
  * @since 2.1
  */
 public class SiteMap
@@ -172,9 +172,13 @@ public class SiteMap
         for ( MenuItem item : items )
         {
             sink.listItem();
-            sink.link( relativePath( item.getHref() ) );
-            sink.text( item.getName() );
-            sink.link_();
+            if ( item.getHref() != null )
+            {
+                sink.link( relativePath( item.getHref() ) );
+                sink.text( item.getName() );
+                sink.link_();
+            }
+
             extractItems( item.getItems(), sink );
             sink.listItem_();
         }
